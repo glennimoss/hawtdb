@@ -29,7 +29,7 @@ import java.util.List;
 
 /**
  * Abstract base class for implementations of EncoderDecoder which use stream encoding/decoding.
- * 
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 abstract public class AbstractStreamPagedAccessor<T>  implements PagedAccessor<T> {
@@ -38,7 +38,7 @@ abstract public class AbstractStreamPagedAccessor<T>  implements PagedAccessor<T
         // The node will be stored in an extent. This allows us to easily
         // support huge nodes.
         // The first extent is only 1 page long, extents linked off
-        // the first page will be up to 128 pages long.
+        // the next extent will be up to 128 pages long.
         ExtentOutputStream eos = new ExtentOutputStream(paged, page, (short) 1, (short) 128);
         DataOutputStream os = new DataOutputStream(eos);
         try {

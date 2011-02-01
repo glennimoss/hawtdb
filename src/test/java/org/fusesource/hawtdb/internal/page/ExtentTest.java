@@ -29,22 +29,29 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import static org.fusesource.hawtdb.internal.page.Tracer.*;
+
 /**
- * 
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 public class ExtentTest {
+
+    private final static Log LOG = LogFactory.getLog(ExtentTest.class);
 
 	private PageFileFactory pff;
     private PageFile paged;
 
     protected PageFileFactory createPageFileFactory() {
 	    PageFileFactory rc = new PageFileFactory();
-	    rc.setMappingSegementSize(rc.getPageSize()*3);
+        rc.setPageSize((short)19);
+	    rc.setMappingSegementSize(19);
 	    rc.setFile(new File("target/test-data/"+getClass().getName()+".db"));
 	    return rc;
 	}
-    
+
 	@Before
 	public void setUp() throws Exception {
         pff = createPageFileFactory();
@@ -57,24 +64,25 @@ public class ExtentTest {
 	public void tearDown() throws Exception {
 	    pff.close();
 	}
-	
+
 	protected void reload() {
         pff.close();
         pff.open();
         paged = pff.getPageFile();
 	}
-	
+
 
     @Test
 	public void testExtentStreams() throws IOException {
-        ExtentOutputStream eos = new ExtentOutputStream(paged);
+        traceStart(LOG, "ExtentTest.testExtentStreams()");
+        ExtentOutputStream eos = new ExtentOutputStream(paged, (short)19);
         DataOutputStream os = new DataOutputStream(eos);
-        for (int i = 0; i < 10000; i++) {
-            os.writeUTF("Test string:" + i);
+        for (int i = 0; i < 100; i++) {
+            os.writeUTF(String.format("Test string:%02d", i));
         }
         os.close();
         int page = eos.getPage();
-        
+
         assertEquals(0, page);
 
         // Reload the page file.
@@ -82,10 +90,11 @@ public class ExtentTest {
 
         ExtentInputStream eis = new ExtentInputStream(paged, page);
         DataInputStream is = new DataInputStream(eis);
-        for (int i = 0; i < 10000; i++) {
-            assertEquals("Test string:" + i, is.readUTF());
+        for (int i = 0; i < 100; i++) {
+            assertEquals(String.format("Test string:%02d", i), is.readUTF());
         }
         assertEquals(-1, is.read());
         is.close();
+        traceEnd(LOG, "ExtentTest.testExtentStreams");
     }
 }

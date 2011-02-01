@@ -38,21 +38,21 @@ import static org.fusesource.hawtdb.internal.page.Update.update;
 /**
  * Aggregates a group of commits so that they can be more efficiently
  * stored to disk.
- * 
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 final class Batch extends LinkedNode<Batch> implements Externalizable, Iterable<Commit> {
 
     private static final long serialVersionUID = 1188640492489990493L;
-    
+
     /** the pageId that this redo batch is stored at */
     int page=-1;
     /** points to a previous redo batch page */
     public int previous=-1;
     /** was this object reloaded from disk? */
     boolean recovered;
-    
-    /** the commits and snapshots in the redo */ 
+
+    /** the commits and snapshots in the redo */
     final LinkedNodeList<Commit> commits = new LinkedNodeList<Commit>();
     /** tracks how many snapshots are referencing the redo */
     int snapshots;
@@ -64,10 +64,10 @@ final class Batch extends LinkedNode<Batch> implements Externalizable, Iterable<
     boolean performed;
 
     ArrayList<Runnable> flushCallbacks = new ArrayList<Runnable>();
-    
+
     public Batch() {
     }
-    
+
     public boolean isPerformed() {
         return performed;
     }
@@ -76,10 +76,10 @@ final class Batch extends LinkedNode<Batch> implements Externalizable, Iterable<
         this.head = head;
     }
 
-    public String toString() { 
+    public String toString() {
         return "{ page: "+this.page+", base: "+base+", head: "+head+", snapshots: "+snapshots+", commits: "+ commits.size()+", previous: "+previous+" }";
     }
-    
+
     public void writeExternal(ObjectOutput out) throws IOException {
         out.writeLong(head);
         out.writeLong(base);
@@ -102,7 +102,7 @@ final class Batch extends LinkedNode<Batch> implements Externalizable, Iterable<
         for (Commit commit : l) {
             commits.addLast(commit);
         }
-    }        
+    }
 
     public int pageCount() {
         int rc = 0;
@@ -122,12 +122,12 @@ final class Batch extends LinkedNode<Batch> implements Externalizable, Iterable<
         }
         return null;
     }
-    
+
     public Iterator<Commit> iterator() {
         return new Iterator<Commit>() {
             Commit next = commits.getHead();
             Commit last;
-            
+
             public boolean hasNext() {
                 return next!=null;
             }
@@ -167,6 +167,7 @@ final class Batch extends LinkedNode<Batch> implements Externalizable, Iterable<
                     if( du.removed() ) {
                         assert(!du.put());
 
+                        // TODO: does this use of pagesLinked EXPECT the freeing behaviour?
                         List<Integer> freePages = du.marshaller.pagesLinked(pageFile, page);
                         for (Integer linkedPage : freePages) {
                             commit.merge(pageFile.allocator(), linkedPage, update().freed(true));
@@ -179,19 +180,13 @@ final class Batch extends LinkedNode<Batch> implements Externalizable, Iterable<
                         if( !du.allocated() ) {
                             // update has to occur on a shadow page.
                             du.shadow(pageFile.allocator().alloc(1));
-
-                            // free up the linked pages of the previous put
-                            List<Integer> freePages = du.marshaller.pagesLinked(pageFile, page);
-                            for (Integer linkedPage : freePages) {
-                                commit.merge(pageFile.allocator(), linkedPage, update().freed(true));
-                            }
                         }
 
                         List<Integer> linkedPages = du.marshaller.store(pageFile, du.translate(page), du.value);
                         if( traced(page) ) {
                             trace("storing update of %d at %d linked pages: %s", page, du.translate(page), linkedPages);
                         }
-                        
+
                         for (Integer linkedPage : linkedPages) {
                             // add any allocated pages to the update list so that the free
                             // list gets properly adjusted.

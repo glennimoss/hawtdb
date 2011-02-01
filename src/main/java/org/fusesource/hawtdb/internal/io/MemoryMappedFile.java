@@ -35,14 +35,14 @@ import org.fusesource.hawtdb.util.IOHelper;
 import org.fusesource.hawtbuf.Buffer;
 
 /**
- * Provides Memory Mapped access to a file.  It manages pooling the 
+ * Provides Memory Mapped access to a file.  It manages pooling the
  * direct buffers which mapped to the files.  Multiple direct buffers
  * are used to deal with OS and Java restrictions.
- * 
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 final public class MemoryMappedFile {
-	
+
 	private final ByteBufferReleaser BYTE_BUFFER_RELEASER = createByteBufferReleaser();
 
 	private final int bufferSize;
@@ -66,7 +66,7 @@ final public class MemoryMappedFile {
 	public void read(long position, Buffer data) throws IOPagingException {
 		this.read(position, data.data, data.offset, data.length);
 	}
-	
+
 	public void read(long position, byte[] data, int offset, int length) throws IOPagingException {
 		int bufferIndex = (int) (position / bufferSize);
 		int bufferOffset = (int) (position % bufferSize);
@@ -79,7 +79,7 @@ final public class MemoryMappedFile {
 			length -= remaining;
 			bufferIndex++;
 			buffer = loadBuffer(bufferIndex).duplicate();
-
+			remaining = buffer.remaining();
 		}
 		buffer.get(data, offset, length);
 	}
@@ -91,7 +91,7 @@ final public class MemoryMappedFile {
 		buffer = position(buffer, bufferOffset);
 		int remaining = buffer.remaining();
 		if (length > remaining) {
-			// In the case we can't contiguously read the entire buffer.. 
+			// In the case we can't contiguously read the entire buffer..
 			// fallback to using non-direct buffers..
 			byte[] data = new byte[length];
 			read(position, data);
@@ -100,7 +100,7 @@ final public class MemoryMappedFile {
 			return (ByteBuffer) buffer.limit(buffer.position()+length);
 		}
 	}
-	
+
     public ByteBuffer slice(boolean readOnly, long position, int length) {
         int bufferIndex = (int) (position / bufferSize);
         int bufferOffset = (int) (position % bufferSize);
@@ -118,7 +118,7 @@ final public class MemoryMappedFile {
         }
         return ((ByteBuffer) buffer.limit(buffer.position()+length)).slice();
     }
-    
+
     public void unslice(ByteBuffer buffer) {
         if( bounderyBuffers.remove(buffer) ) {
             BYTE_BUFFER_RELEASER.release(buffer);
@@ -138,7 +138,7 @@ final public class MemoryMappedFile {
 
 		/**
 		 * Writes the transfer to the destinations current file position.
-		 * 
+		 *
 		 * @param destination
 		 * @throws IOException
 		 */
@@ -150,7 +150,7 @@ final public class MemoryMappedFile {
 	public ChannelTransfer readChannelTansfer(int position, int length) throws IOPagingException {
 		return new ChannelTransfer(channel, position, length);
 	}
-	
+
 	public void writeChannelTansfer(long position, ChannelTransfer transfer) throws IOPagingException {
 		try {
             channel.position(position);
@@ -159,7 +159,7 @@ final public class MemoryMappedFile {
             throw new IOPagingException(e);
         }
 	}
-	
+
 	public void write(long position, byte[] data) throws IOPagingException {
 		this.write(position, data, 0, data.length);
 	}
@@ -181,8 +181,9 @@ final public class MemoryMappedFile {
 			data.limit(l);
 			bufferIndex++;
 			buffer = loadBuffer(bufferIndex).duplicate();
+			remaining = buffer.remaining();
 		}
-		buffer.put(data);	
+		buffer.put(data);
 	}
 
 	public void write(long position, byte[] data, int offset, int length)
@@ -198,7 +199,7 @@ final public class MemoryMappedFile {
 			length -= remaining;
 			bufferIndex++;
 			buffer = loadBuffer(bufferIndex).duplicate();
-
+			remaining = buffer.remaining();
 		}
 		buffer.put(data, offset, length);
 	}
@@ -238,7 +239,7 @@ final public class MemoryMappedFile {
             throw new IOPagingException(e);
         }
 	}
-	
+
 	public void close() throws IOPagingException {
 		sync();
 		for (MappedByteBuffer buffer : buffers) {
@@ -257,9 +258,9 @@ final public class MemoryMappedFile {
 	private static interface ByteBufferReleaser {
 		public void release(ByteBuffer buffer);
 	}
-	
+
 	static private ByteBufferReleaser createByteBufferReleaser() {
-		
+
 		// Try to drill into the java.nio.DirectBuffer internals...
 		final Method[] cleanerMethods = AccessController.doPrivileged(new PrivilegedAction<Method[]>() {
 			public Method[] run() {
@@ -275,7 +276,7 @@ final public class MemoryMappedFile {
 				}
 			}
 		});
-		
+
 		// Yay, we can actually release the buffers.
 		if( cleanerMethods !=null ) {
 			return new ByteBufferReleaser() {
@@ -291,7 +292,7 @@ final public class MemoryMappedFile {
 				}
 			};
 		}
-		
+
 		// We can't really release the buffers.. Good Luck!
 		return new ByteBufferReleaser() {
 			public void release(ByteBuffer buffer) {

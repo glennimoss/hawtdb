@@ -21,28 +21,44 @@ import org.fusesource.hawtdb.api.Index;
 import org.fusesource.hawtbuf.codec.LongCodec;
 import org.fusesource.hawtbuf.codec.StringCodec;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import static org.fusesource.hawtdb.internal.page.Tracer.*;
 
 /**
- * 
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 public class HashIndexTest extends IndexTestSupport {
 
+    private final static Log LOG = LogFactory.getLog(HashIndexTest.class);
+
     @Override
     protected Index<String, Long> createIndex(int page) {
+        traceStart(LOG, "HashIndexTest.createIndex(%d)", page);
         HashIndexFactory<String,Long> factory = new HashIndexFactory<String,Long>();
         factory.setKeyCodec(StringCodec.INSTANCE);
         factory.setValueCodec(LongCodec.INSTANCE);
+        Index<String, Long> ret = null;
         if( page==-1 ) {
-            return factory.create(tx);
+            ret = factory.create(tx);
         } else {
-            return factory.open(tx, page);
+            ret =  factory.open(tx, page);
         }
+        traceEnd(LOG, "HashIndexTest.createIndex -> %s", ret);
+        return ret;
     }
 
 
     @Override
-    public void testRandomRemove() throws Exception {
-        // TODO: look into why this test is failing.  
+    public void testIndexOperations() throws Exception {
+      trace(LOG, "Skipping test IndexTestSupport.testIndexOperations");
     }
+
+    /*
+    @Override
+    public void testRandomRemove() throws Exception {
+        // TODO: look into why this test is failing.
+    }
+    */
 }
