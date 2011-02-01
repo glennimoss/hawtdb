@@ -21,6 +21,8 @@ import org.apache.commons.logging.LogFactory;
 
 import java.util.HashSet;
 
+import org.fusesource.hawtbuf.Buffer;
+
 /**
  * <p>
  * </p>
@@ -46,5 +48,4 @@ public class Logging {
             LOG.trace(String.format(message, args));
         }
     }
-
 }

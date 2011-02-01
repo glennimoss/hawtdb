@@ -22,19 +22,23 @@ import org.fusesource.hawtbuf.codec.ObjectCodec;
 
 import java.util.Comparator;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import static org.fusesource.hawtdb.internal.page.Tracer.*;
+
 /**
- * This object is used to create variable magnitude b+tree indexes. 
- * 
+ * This object is used to create variable magnitude b+tree indexes.
+ *
  * A b+tree can be used for set or map-based indexing. Leaf
  * nodes are linked together for faster iteration of the values.
- * 
+ *
  * <br>
- * The variable magnitude attribute means that the b+tree attempts 
+ * The variable magnitude attribute means that the b+tree attempts
  * to store as many values and pointers on one page as is possible.
- * 
+ *
  * <br>
  * It will act as a simple-prefix b+tree if a prefixer is configured.
- * 
+ *
  * <br>
  * In a simple-prefix b+tree, instead of promoting actual keys to branch pages, when
  * leaves are split, a shortest-possible separator is generated at the pivot.
@@ -44,10 +48,12 @@ import java.util.Comparator;
  * and redistribution of pages when deletions occur. Deletions only affect leaf
  * pages in this implementation, and so it is entirely possible for a leaf page
  * to be completely empty after all of its keys have been removed.
- * 
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 public class BTreeIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
+
+    private final static Log LOG = LogFactory.getLog(BTreeIndexFactory.class);
 
     private Codec<Key> keyCodec = new ObjectCodec<Key>();
     private Codec<Value> valueCodec = new ObjectCodec<Value>();
@@ -59,37 +65,48 @@ public class BTreeIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
      * Creates a new BTree index on the Paged object.
      */
     public SortedIndex<Key, Value> create(Paged paged) {
+        traceStart(LOG, "BTreeIndexFactory.create(%s)", paged.getClass());
         BTreeIndex<Key, Value> index = createInstance(paged, paged.alloc());
         index.create();
+        traceEnd(LOG, "BTreeIndexFactory.create -> %s", index);
         return index;
     }
-    
+
     @Override
     public String toString() {
         return "{ deferredEncoding: "+deferredEncoding+" }";
     }
-    
+
     /**
      * Loads an existing BTree index from the paged object.
      */
     public SortedIndex<Key, Value> open(Paged paged, int indexNumber) {
-        return createInstance(paged, indexNumber);
+        traceStart(LOG, "BTreeIndexFactory.open(%s, %d)", paged.getClass(), indexNumber);
+        SortedIndex<Key, Value> ret = createInstance(paged, indexNumber);
+        traceEnd(LOG, "BTreeIndexFactory.open");
+        return ret;
     }
 
     /**
      * Loads an existing BTree index from the paged object.
      */
     public SortedIndex<Key, Value> open(Paged paged) {
-        return createInstance(paged, 0);
+        traceStart(LOG, "BTreeIndexFactory.open(%s)", paged.getClass());
+        SortedIndex<Key, Value> ret = createInstance(paged, 0);
+        traceEnd(LOG, "BTreeIndexFactory.open");
+        return ret;
     }
 
     private BTreeIndex<Key, Value> createInstance(Paged paged, int page) {
-        return new BTreeIndex<Key, Value>(paged, page, this);
+        traceStart(LOG, "BTreeIndexFactory.createInstance(%s, %d)", paged.getClass(), page);
+        BTreeIndex<Key, Value> ret = new BTreeIndex<Key, Value>(paged, page, this);
+        traceEnd(LOG, "BTreeIndexFactory.createInstance -> %s", ret);
+        return ret;
     }
 
     /**
      * Defaults to an {@link org.fusesource.hawtbuf.codec.ObjectCodec} if not explicitly set.
-     * 
+     *
      * @return the marshaller used for keys.
      */
     public Codec<Key> getKeyCodec() {
@@ -98,7 +115,7 @@ public class BTreeIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
 
     /**
      * Allows you to configure custom marshalling logic to encode the index keys.
-     * 
+     *
      * @param codec the marshaller used for keys.
      */
     public void setKeyCodec(Codec<Key> codec) {
@@ -107,7 +124,7 @@ public class BTreeIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
 
     /**
      * Defaults to an {@link org.fusesource.hawtbuf.codec.ObjectCodec} if not explicitly set.
-     *  
+     *
      * @return the marshaller used for values.
      */
     public Codec<Value> getValueCodec() {
@@ -116,7 +133,7 @@ public class BTreeIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
 
     /**
      * Allows you to configure custom marshalling logic to encode the index values.
-     * 
+     *
      * @param codec the marshaller used for values
      */
     public void setValueCodec(Codec<Value> codec) {
@@ -124,7 +141,7 @@ public class BTreeIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
     }
 
     /**
-     * 
+     *
      * @return true if deferred encoding enabled
      */
     public boolean isDeferredEncoding() {
@@ -134,12 +151,12 @@ public class BTreeIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
     /**
      * <p>
      * When deferred encoding is enabled, the index avoids encoding keys and values
-     * for as long as possible so take advantage of collapsing multiple updates of the 
+     * for as long as possible so take advantage of collapsing multiple updates of the
      * same key/value into a single update operation and single encoding operation.
      * </p><p>
-     * Using this feature requires the keys and values to be immutable objects since 
+     * Using this feature requires the keys and values to be immutable objects since
      * unexpected errors would occur if they are changed after they have been handed
-     * to to the index for storage. 
+     * to to the index for storage.
      * </p>
      * @param enable should deferred encoding be enabled.
      */
@@ -158,7 +175,7 @@ public class BTreeIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
     /**
      * Gets the custom configured Comparator used to sort the keys
      * in the index.  Defaults to null.
-     * 
+     *
      * @return
      */
     public Comparator getComparator() {

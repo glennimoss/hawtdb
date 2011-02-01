@@ -20,14 +20,18 @@ import org.fusesource.hawtbuf.codec.Codec;
 import org.fusesource.hawtbuf.codec.ObjectCodec;
 import org.fusesource.hawtdb.internal.index.HashIndex;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import static org.fusesource.hawtdb.internal.page.Tracer.*;
+
 /**
  * <p>
  * Uses to create Hash based storage of key/values.  The hash index
  * consists of contiguous array of pages allocated on the page file.
- * Each page is considered a bucket.  keys get hashed to a bucket 
- * indexes and the key and value are stored in the bucket.  Each 
- * bucket is actually a BTree root and can therefore store multiple 
- * keys and values and overflow to additional pages if needed.    
+ * Each page is considered a bucket.  keys get hashed to a bucket
+ * indexes and the key and value are stored in the bucket.  Each
+ * bucket is actually a BTree root and can therefore store multiple
+ * keys and values and overflow to additional pages if needed.
  * </p>
  * <p>
  * Once the percentage of hash buckets used passes the configured
@@ -38,17 +42,19 @@ import org.fusesource.hawtdb.internal.index.HashIndex;
  * <p>
  * Unlike BTree indexes, Hash indexes are not kept in key sorted order.
  * </p>
- * 
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
-    
+
+    private final static Log LOG = LogFactory.getLog(HashIndexFactory.class);
+
     public static final String PROPERTY_PREFIX = HashIndex.class.getName()+".";
     public static final int DEFAULT_BUCKET_CAPACITY = Integer.parseInt(System.getProperty(PROPERTY_PREFIX+"DEFAULT_BUCKET_CAPACITY", "1024"));
     public static final int DEFAULT_MAXIMUM_BUCKET_CAPACITY = Integer.parseInt(System.getProperty(PROPERTY_PREFIX+"DEFAULT_MAXIMUM_BUCKET_CAPACITY", "16384"));
     public static final int DEFAULT_MINIMUM_BUCKET_CAPACITY = Integer.parseInt(System.getProperty(PROPERTY_PREFIX+"DEFAULT_MINIMUM_BUCKET_CAPACITY", "16"));
     public static final int DEFAULT_LOAD_FACTOR = Integer.parseInt(System.getProperty(PROPERTY_PREFIX+"DEFAULT_LOAD_FACTOR", "75"));
-    
+
     private Codec<Key> keyCodec = new ObjectCodec<Key>();
     private Codec<Value> valueCodec = new ObjectCodec<Value>();
     private int initialBucketCapacity = DEFAULT_BUCKET_CAPACITY;
@@ -61,30 +67,42 @@ public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
      * Loads an existing hash index from the paged object.
      */
     public Index<Key, Value> open(Paged paged, int indexNumber) {
-        return createInstance(paged, indexNumber).open();
+        traceStart(LOG, "HashIndexFactory.open(%s, %d)", paged, indexNumber);
+        Index<Key, Value> ret = createInstance(paged, indexNumber).open();
+        traceEnd(LOG, "HashIndexFactory.open -> %s", ret);
+        return ret;
     }
 
     /**
      * Loads an existing hash index from the paged object.
      */
     public Index<Key, Value> open(Paged paged) {
-        return createInstance(paged, 0).open();
+        traceStart(LOG, "HashIndexFactory.open(%s)", paged.getClass());
+        Index<Key, Value> ret = createInstance(paged, 0).open();
+        traceEnd(LOG, "HashIndexFactory.open -> %s", ret);
+        return ret;
     }
 
     /**
      * Creates a new hash index on the Paged object.
      */
     public Index<Key, Value> create(Paged paged) {
-        return createInstance(paged, paged.alloc()).create();
+        traceStart(LOG, "HashIndexFactory.create(%s)", paged.getClass());
+        Index<Key, Value> ret = createInstance(paged, paged.alloc()).create();
+        traceEnd(LOG, "HashIndexFactory.create -> %s", ret);
+        return ret;
     }
 
     private HashIndex<Key, Value> createInstance(Paged paged, int page) {
-        return new HashIndex<Key, Value>(paged, page, this);
+        traceStart(LOG, "HashIndexFactory.createInstance(%s, %d)", paged, page);
+        HashIndex<Key, Value> ret = new HashIndex<Key, Value>(paged, page, this);
+        traceEnd(LOG, "HashIndexFactory.createInstance -> %s", ret);
+        return ret;
     }
 
     /**
      * Defaults to an {@link org.fusesource.hawtbuf.codec.ObjectCodec} if not explicitly set.
-     * 
+     *
      * @return the marshaller used for keys.
      */
     public Codec<Key> getKeyCodec() {
@@ -93,7 +111,7 @@ public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
 
     /**
      * Allows you to configure custom marshalling logic to encode the index keys.
-     * 
+     *
      * @param codec the marshaller used for keys.
      */
     public void setKeyCodec(Codec<Key> codec) {
@@ -102,7 +120,7 @@ public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
 
     /**
      * Defaults to an {@link org.fusesource.hawtbuf.codec.ObjectCodec} if not explicitly set.
-     *  
+     *
      * @return the marshaller used for values.
      */
     public Codec<Value> getValueCodec() {
@@ -111,7 +129,7 @@ public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
 
     /**
      * Allows you to configure custom marshalling logic to encode the index values.
-     * 
+     *
      * @param codec the marshaller used for values
      */
     public void setValueCodec(Codec<Value> codec) {
@@ -127,7 +145,7 @@ public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
 
     /**
      * Sets the maximum bucket capacity.
-     * 
+     *
      * @param value the new capacity
      */
     public void setMaximumBucketCapacity(int value) {
@@ -135,7 +153,7 @@ public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
     }
 
     /**
-     * 
+     *
      * @return the minimum bucket capacity
      */
     public int getMinimumBucketCapacity() {
@@ -144,7 +162,7 @@ public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
 
     /**
      * Sets the minimum bucket capacity.
-     * 
+     *
      * @param value the new capacity
      */
     public void setMinimumBucketCapacity(int value) {
@@ -160,7 +178,7 @@ public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
 
     /**
      * Sets the index load factor.  When this load factor percentage
-     * of used buckets is execeeded, the index will resize to increase the bucket capacity. 
+     * of used buckets is execeeded, the index will resize to increase the bucket capacity.
      * @param loadFactor
      */
     public void setLoadFactor(int loadFactor) {
@@ -175,7 +193,7 @@ public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
     }
 
     /**
-     * sets the initial bucket capacity. 
+     * sets the initial bucket capacity.
      * @param binCapacity
      */
     public void setBucketCapacity(int binCapacity) {
@@ -191,7 +209,7 @@ public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
     }
 
     /**
-     * 
+     *
      * @return true if deferred encoding enabled
      */
     public boolean isDeferredEncoding() {
@@ -201,17 +219,17 @@ public class HashIndexFactory<Key, Value> implements IndexFactory<Key, Value> {
     /**
      * <p>
      * When deferred encoding is enabled, the index avoids encoding keys and values
-     * for as long as possible so take advantage of collapsing multiple updates of the 
+     * for as long as possible so take advantage of collapsing multiple updates of the
      * same key/value into a single update operation and single encoding operation.
      * </p><p>
-     * Using this feature requires the keys and values to be immutable objects since 
+     * Using this feature requires the keys and values to be immutable objects since
      * unexpected errors would occur if they are changed after they have been handed
-     * to to the index for storage. 
+     * to to the index for storage.
      * </p>
      * @param enable should deferred encoding be enabled.
      */
     public void setDeferredEncoding(boolean enable) {
         this.deferredEncoding = enable;
     }
-    
+
 }

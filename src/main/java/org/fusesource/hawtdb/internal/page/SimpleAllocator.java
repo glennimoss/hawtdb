@@ -22,7 +22,11 @@ import org.fusesource.hawtdb.api.Allocator;
 import org.fusesource.hawtdb.api.OutOfSpaceException;
 import org.fusesource.hawtdb.internal.util.Ranges;
 import org.fusesource.hawtdb.internal.util.Ranges.Range;
-import static org.fusesource.hawtdb.internal.page.Logging.*;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import static org.fusesource.hawtdb.internal.page.Tracer.*;
+import static org.fusesource.hawtdb.internal.page.Logging.traced;
 
 
 /**
@@ -32,42 +36,50 @@ import static org.fusesource.hawtdb.internal.page.Logging.*;
  */
 public class SimpleAllocator implements Allocator {
 
+    private final static Log LOG = LogFactory.getLog(SimpleAllocator.class);
+
     private final Ranges freeRanges = new Ranges();
     private int limit;
 
     public SimpleAllocator(int limit) {
+        trace(LOG, "SimpleAllocator(%d)", limit);
         this.limit = limit;
         freeRanges.add(0, limit);
     }
 
-
     private void op_trace(String op, int page, int count) {
         if( traced(page) ) {
-            trace("%s: %d : %d", op, page, count);
+            trace(LOG, "%s: %d : %d", op, page, count);
         }
     }
+
 
     /**
      * @see Allocator#alloc(int)
      */
     synchronized public int alloc(int size) throws OutOfSpaceException {
+        traceStart(LOG, "SimpleAllocator.alloc(%d)", size);
         for (Iterator<Range> i = freeRanges.iterator(); i.hasNext();) {
             Range r = (Range) i.next();
             if( r.size() >= size ) {
                 int rc = r.start;
-                 op_trace("ALLOC", rc, size);
+                op_trace("ALLOC", rc, size);
                 freeRanges.remove(rc, size);
+                trace(LOG, "Allocated %d pages starting at %d", size, rc);
+                traceEnd(LOG, "SimpleAllocator.alloc -> %d", rc);
                 return rc;
             }
         }
+        traceEnd(LOG, "SimpleAllocator.alloc -> OutOfSpaceException");
         throw new OutOfSpaceException();
     }
 
-    
+
     /**
      * @see Allocator#free(int, int)
      */
     synchronized public void free(int pageId, int count) {
+        trace(LOG, "SimpleAllocator.free(%d, %d)", pageId, count);
         freeRanges.add(pageId, count);
         op_trace("FREE", pageId, count);
     }
@@ -76,6 +88,7 @@ public class SimpleAllocator implements Allocator {
      * @see Allocator#unfree(int, int)
      */
     synchronized public void unfree(int pageId, int count) {
+        trace(LOG, "SimpleAllocator.unfree(%d, %d)", pageId, count);
         freeRanges.remove(pageId, count);
     }
 
@@ -87,19 +100,21 @@ public class SimpleAllocator implements Allocator {
     synchronized public void setFreeRanges(Ranges freePages) throws UnsupportedOperationException {
         freeRanges.copy(freePages);
     }
-    
+
     public int getLimit() {
         return limit;
     }
-    
+
     public boolean isAllocated(int page) {
-        return !freeRanges.contains(page);
+        boolean ret = !freeRanges.contains(page);
+        trace(LOG, "SimpleAllocator.isAllocated(%d) -> %b", page, ret);
+        return ret;
     }
 
     public Ranges getFreeRanges() {
         return freeRanges;
     }
-    
+
     @Override
     public String toString() {
         return "{ free pages: "+freeRanges.toString()+" }";

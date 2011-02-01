@@ -24,14 +24,19 @@ import org.fusesource.hawtdb.api.Paged;
 import org.fusesource.hawtdb.internal.util.Ranges;
 import org.fusesource.hawtbuf.Buffer;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import static org.fusesource.hawtdb.internal.page.Tracer.*;
 
 /**
- * An InputStream which reads it's data from an 
+ * An InputStream which reads it's data from an
  * extent previously written with the {@link ExtentOutputStream}.
- * 
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 public class ExtentInputStream extends InputStream {
+
+    private final static Log LOG = LogFactory.getLog(ExtentInputStream.class);
 
     private final Paged paged;
     private Extent current;
@@ -39,76 +44,92 @@ public class ExtentInputStream extends InputStream {
     private Ranges pages = new Ranges();
 
     public ExtentInputStream(Paged paged, int page) {
+        traceStart(LOG, "ExtentInputStream(%s, %d)", paged, page);
         this.paged = paged;
         this.page = page;
         current = new Extent(paged, page);
         current.readOpen();
         pages.add(current.getPage(), paged.pages(current.getLength()));
+        traceEnd(LOG, "ExtentInputStream");
     }
-    
+
     @Override
     public String toString() {
         return "{ page: "+page+", current: "+current+" }";
     }
-    
+
 
     @Override
     public int read() throws IOException {
-        if( current == null ) {
+        traceStart(LOG, "ExtentInputStream.read()");
+        if (current == null) {
+            traceEnd(LOG, "ExtentInputStream.read -> -1");
             return -1;
         }
         if (current.atEnd()) {
-            int next = current.getNext();
-            if (next == -1) {
-                current.readClose();
-                current=null;
+            current = nextExtent();
+            if (current == null) {
+                traceEnd(LOG, "ExtentInputStream.read -> -1");
                 return -1;
             }
-            current.readClose();
-            current = new Extent(paged, next);
-            current.readOpen();
-            pages.add(current.getPage(), paged.pages(current.getLength()));
         }
-        return current.read();
+        int b = current.read();
+        traceEnd(LOG, "ExtentInputStream.read -> %02X", b);
+        return b;
     }
 
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
-        int rc=len;
+        traceStart(LOG, "ExtentInputStream.read(byte[%d], %d, %d)", b.length, off, len);
+        int rc = len;
         Buffer buffer = new Buffer(b, off, len);
+        trace(LOG, "buffer = %s", buf(buffer));
         if( current == null ) {
-            throw new EOFException();
+            traceEnd(LOG, "ExtentInputStream.read -> -1");
+            return -1;
         }
         while (buffer.length > 0) {
             if (current.atEnd()) {
-                int next = current.getNext();
-                if (next == -1) {
-                    current.readClose();
-                    current=null;
+                current = nextExtent();
+                if (current == null) {
                     break;
                 }
-                current.readClose();
-                current = new Extent(paged, next);
-                current.readOpen();
-                pages.add(current.getPage(), paged.pages(current.getLength()));
             }
             current.read(buffer);
         }
-        rc-=buffer.length;
-        if ( rc==0 ) {
-            throw new EOFException();
+        rc -= buffer.length;
+        if (rc == 0) {
+            traceEnd(LOG, "ExtentInputStream.read -> -1");
+            return -1;
         }
+        traceEnd(LOG, "ExtentInputStream.read -> %d", rc);
         return rc;
+    }
+
+    protected Extent nextExtent() {
+        traceStart(LOG, "ExtentInputStream.nextExtent()");
+        int next = current.getNext();
+        current.readClose();
+        if (next == -1) {
+            return null;
+        }
+        Extent nextExtent = new Extent(paged, next);
+        nextExtent.readOpen();
+        pages.add(nextExtent.getPage(), paged.pages(nextExtent.getLength()));
+        traceEnd(LOG, "ExtentInputStream.nextExtent -> %s", nextExtent);
+        return nextExtent;
     }
 
     @Override
     public void close() throws IOException {
-        if( current!=null ) {
+        traceStart(LOG, "ExtentInputStream.close()");
+        if (current != null) {
             current.readClose();
-            current=null;
+            current = null;
         }
+        traceEnd(LOG, "ExtentInputStream.close");
     }
-    
+
     public Ranges getPages() {
         return pages;
     }

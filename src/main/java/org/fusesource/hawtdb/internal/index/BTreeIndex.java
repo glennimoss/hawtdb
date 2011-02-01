@@ -32,14 +32,19 @@ import org.fusesource.hawtbuf.Buffer;
 import org.fusesource.hawtbuf.DataByteArrayInputStream;
 import org.fusesource.hawtbuf.DataByteArrayOutputStream;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import static org.fusesource.hawtdb.internal.page.Tracer.*;
 
 /**
  * A variable magnitude b+tree indexes with support for optional
  * simple-prefix optimization.
- * 
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
+
+    private final static Log LOG = LogFactory.getLog(BTreeIndex.class);
 
     private final BTreeNode.DataPagedAccessor<Key, Value> DATA_ENCODER_DECODER = new BTreeNode.DataPagedAccessor<Key, Value>(this);
 
@@ -52,6 +57,7 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
     private final Comparator comparator;
 
     public BTreeIndex(Paged paged, int page, BTreeIndexFactory<Key, Value> factory) {
+        traceStart(LOG, "BTreeIndex.BTreeIndex(%s, %d, %s)", paged.getClass(), page, factory);
         this.paged = paged;
         this.page = page;
         this.keyCodec = factory.getKeyCodec();
@@ -64,17 +70,20 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
 
         this.prefixer = factory.getPrefixer();
         this.comparator = factory.getComparator();
+        traceEnd(LOG, "BTreeIndex.BTreeIndex");
     }
-    
+
     @Override
     public String toString() {
         return "{ page: "+page+", deferredEncoding: "+deferredEncoding+" }";
     }
-    
+
     public void create() {
+        traceStart(LOG, "BTreeIndex.create()");
         // Store the root page..
         BTreeNode<Key, Value> root = new BTreeNode<Key, Value>(null, page);
-        storeNode(root); 
+        storeNode(root);
+        traceEnd(LOG, "BTreeIndex.create");
     }
 
     public boolean containsKey(Key key) {
@@ -96,7 +105,7 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
     public Value remove(Key key) {
         return root().remove(this, key);
     }
-    
+
     public int size() {
         return root().size(this);
     }
@@ -155,7 +164,9 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
     // Internal implementation methods
     // /////////////////////////////////////////////////////////////////
     private BTreeNode<Key, Value> root() {
-        return loadNode(null, page);
+        BTreeNode<Key, Value> root = loadNode(null, page);
+        trace(LOG, "BTreeIndex.root() -> %s", root);
+        return root;
     }
 
     // /////////////////////////////////////////////////////////////////
@@ -164,46 +175,59 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
     BTreeNode<Key, Value> createNode(BTreeNode<Key, Value> parent, Data<Key, Value> data) {
         return new BTreeNode<Key, Value>(parent, paged.allocator().alloc(1), data);
     }
-    
+
     BTreeNode<Key, Value> createNode(BTreeNode<Key, Value> parent) {
         return new BTreeNode<Key, Value>(parent, paged.allocator().alloc(1));
     }
-    
+
     @SuppressWarnings("serial")
     static class PageOverflowIOException extends IndexException {
     }
-    
+
     /**
-     * 
+     *
      * @param node
      * @return false if page overflow occurred
      */
     boolean storeNode(BTreeNode<Key, Value> node) {
+        traceStart(LOG, "BTreeIndex.storeNode(%s)", node);
         if (deferredEncoding) {
+            trace(LOG, "deferred encoding");
             int size = BTreeNode.estimatedSize(this, node.data);
             size += 9; // The extent header.
-            
-            if( !node.allowPageOverflow() && size>paged.getPageSize()) {
+            trace(LOG, "node size %d bytes", size);
+
+            if (!node.allowPageOverflow() && size>paged.getPageSize()) {
+                trace(LOG, "no overflow allowed and this [%d] is too big for the page [%d]", size, paged.getPageSize());
+                traceEnd(LOG, "BTreeIndex.storeNode -> false");
                 return false;
             }
 
             paged.put(DATA_ENCODER_DECODER, node.getPage(), node.data);
             node.storedInExtent=true;
         } else {
-            
-            if( node.storedInExtent ) {
-                DATA_ENCODER_DECODER.pagesLinked(paged, node.page);
+            trace(LOG, "not deferred encoding");
+
+            if (node.storedInExtent) {
+                // TODO: not getting the results therefore expecting free?
+                List<Integer> freed = DATA_ENCODER_DECODER.pagesLinked(paged, node.page);
+                trace(LOG, "Stored in extent, freeing pages linked to %d: %s", node.page, freed);
             }
-            
+
             if (node.isLeaf()) {
+                trace(LOG, "node is leaf");
                 List<Integer> pages = DATA_ENCODER_DECODER.store(paged, node.page, node.data);
                 if( !node.allowPageOverflow() && pages.size()>1 ) {
+                    trace(LOG, "node should not have overflowed?");
+                    // TODO: not getting the results therefore expecting free?
                     DATA_ENCODER_DECODER.pagesLinked(paged, node.page);
                     node.storedInExtent=false;
+                    traceEnd(LOG, "BTreeIndex.storeNode -> false");
                     return false;
                 }
                 node.storedInExtent=true;
             } else {
+                trace(LOG, "node is branch");
                 DataByteArrayOutputStream os = new DataByteArrayOutputStream(paged.getPageSize()) {
                     protected void resize(int newcount) {
                         throw new PageOverflowIOException();
@@ -214,30 +238,38 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
                     paged.write(node.page, os.toBuffer());
                     node.storedInExtent=false;
                 } catch (IOException e) {
+                    traceEnd(LOG, "BTreeIndex.storeNode -> IndexException");
                     throw new IndexException("Could not write btree node");
                 } catch (PageOverflowIOException e) {
+                    traceEnd(LOG, "BTreeIndex.storeNode -> false");
                     return false;
                 }
             }
         }
+        traceEnd(LOG, "BTreeIndex.storeNode -> true");
         return true;
     }
-    
+
 
 
     BTreeNode<Key, Value> loadNode(BTreeNode<Key, Value> parent, int page) {
+        traceStart(LOG, "BTreeIndex.loadNode(%s, %d)", parent, page);
         BTreeNode<Key, Value> node = new BTreeNode<Key, Value>(parent, page);
         if( deferredEncoding ) {
+            trace(LOG, "deferred encoding; assuming stored in extent");
             node.data = paged.get(DATA_ENCODER_DECODER, page);
             node.storedInExtent=true;
         } else {
+            trace(LOG, "not deferred encoding");
             Buffer buffer = new Buffer(paged.getPageSize());
             paged.read(page, buffer);
             if ( buffer.startsWith(Extent.DEFAULT_MAGIC) ) {
+                trace(LOG, "stored in extent");
                 // Page data was stored in an extent..
                 node.data = DATA_ENCODER_DECODER.load(paged, page);
                 node.storedInExtent=true;
             } else {
+                trace(LOG, "plain page");
                 // It was just in a plain page..
                 DataByteArrayInputStream is = new DataByteArrayInputStream(buffer);
                 try {
@@ -248,18 +280,27 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
                 }
             }
         }
+        traceEnd(LOG, "BTreeIndex.loadNode -> %s", node);
         return node;
     }
-    
+
     void free( BTreeNode<Key, Value> node ) {
+        traceStart(LOG, "BTreeIndex.free(%s)", node);
         if( deferredEncoding ) {
+            trace(LOG, "deferred encoding, freeing linked pages");
             paged.clear(DATA_ENCODER_DECODER, node.page);
         } else {
+            trace(LOG, "deferred encoding");
             if ( node.storedInExtent ) {
+                trace(LOG, "stored in extent, freeing linked pages");
+                // TODO: not getting the results therefore expecting free?
                 DATA_ENCODER_DECODER.pagesLinked(paged, node.page);
             }
         }
+
+        trace(LOG, "freeing node page %d", node.page);
         paged.free(node.page);
+        traceEnd(LOG, "BTreeIndex.free");
     }
 
     // /////////////////////////////////////////////////////////////////

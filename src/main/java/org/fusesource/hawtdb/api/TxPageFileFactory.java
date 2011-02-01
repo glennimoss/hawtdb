@@ -21,16 +21,22 @@ import java.io.File;
 import org.fusesource.hawtdb.internal.page.HawtPageFile;
 import org.fusesource.hawtdb.internal.page.HawtTxPageFile;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import static org.fusesource.hawtdb.internal.page.Tracer.*;
+
 /**
  * A factory to create TxPageFile objects.
- * 
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 public class TxPageFileFactory {
 
-    private final PageFileFactory pageFileFactory = new PageFileFactory(); 
+    private final static Log LOG = LogFactory.getLog(TxPageFileFactory.class);
+
+    private final PageFileFactory pageFileFactory = new PageFileFactory();
     private HawtTxPageFile txPageFile;
-    
+
     protected boolean drainOnClose;
     protected boolean sync = true;
     protected boolean useWorkerThread;
@@ -41,10 +47,12 @@ public class TxPageFileFactory {
     }
 
     /**
-     * Opens the TxPageFile object. A subsequent call to {@link #getTxPageFile()} will return 
+     * Opens the TxPageFile object. A subsequent call to {@link #getTxPageFile()} will return
      * the opened TxPageFile.
      */
     public void open() {
+        traceStart(LOG, "TxPageFileFactory.open()");
+
         if( getFile() ==  null ) {
             throw new IllegalArgumentException("file property not set");
         }
@@ -58,13 +66,16 @@ public class TxPageFileFactory {
                 txPageFile.reset();
             }
         }
+        traceEnd(LOG, "TxPageFileFactory.open");
     }
-    
+
     /**
-     * Closes the previously opened PageFile object.  Subsequent calls to 
+     * Closes the previously opened PageFile object.  Subsequent calls to
      * {@link TxPageFileFactory#getTxPageFile()} will return null.
      */
     public void close() {
+        traceStart(LOG, "TxPageFileFactory.close()");
+
         if (txPageFile != null) {
             txPageFile.suspend(true, false, drainOnClose);
             txPageFile.flush();
@@ -72,6 +83,7 @@ public class TxPageFileFactory {
             txPageFile=null;
         }
         pageFileFactory.close();
+        traceEnd(LOG, "TxPageFileFactory.close");
     }
 
     public boolean isSync() {
@@ -81,7 +93,7 @@ public class TxPageFileFactory {
     public void setSync(boolean sync) {
         this.sync = sync;
     }
-    
+
     public TxPageFile getTxPageFile() {
         return txPageFile;
     }

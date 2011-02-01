@@ -26,8 +26,8 @@ import java.nio.ByteBuffer;
 import static org.fusesource.hawtdb.internal.page.Logging.*;
 
 /**
- * Provides a {@link PageFile} interface to a {@link MemoryMappedFile}. 
- * 
+ * Provides a {@link PageFile} interface to a {@link MemoryMappedFile}.
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 public class HawtPageFile implements PageFile {
@@ -36,15 +36,15 @@ public class HawtPageFile implements PageFile {
     private final short pageSize;
     private final int headerSize;
     private final MemoryMappedFile file;
-    
-    
+
+
     public HawtPageFile(MemoryMappedFile file, short pageSize, int headerSize, int maxPages) {
         this.file = file;
         this.allocator = new SimpleAllocator(maxPages);
         this.pageSize = pageSize;
         this.headerSize = headerSize;
     }
-    
+
     ///////////////////////////////////////////////////////////////////
     //
     // Paged interface implementation.
@@ -75,7 +75,7 @@ public class HawtPageFile implements PageFile {
         }
 		file.write(offset(pageId), buffer);
 	}
-	
+
 	public ByteBuffer slice(SliceType type, int pageId, int size) {
         if( traced(pageId) ) {
             trace("slice: %d, type %s", pageId, type);
@@ -89,11 +89,11 @@ public class HawtPageFile implements PageFile {
         file.unslice(buffer);
     }
 
-	
+
     public int getPageSize() {
         return pageSize;
     }
-    
+
     public int pages(int length) {
         assert length >= 0;
         return ((length-1)/pageSize)+1;
@@ -112,9 +112,10 @@ public class HawtPageFile implements PageFile {
     }
 
     public <T> void clear(PagedAccessor<T> pagedAccessor, int page) {
+        // TODO: This looks like it DOES expect the freeing behavior
         pagedAccessor.pagesLinked(this, page);
     }
-    
+
     ///////////////////////////////////////////////////////////////////
     //
     // PageFile public methods.
@@ -135,7 +136,7 @@ public class HawtPageFile implements PageFile {
         assert pageId >= 0;
         return headerSize+(pageId*pageSize);
     }
-    
+
     public int getHeaderSize() {
         return headerSize;
     }
