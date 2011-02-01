@@ -30,7 +30,10 @@ import org.fusesource.hawtbuf.Buffer;
 import org.junit.Assert;
 import org.junit.Test;
 
-import static org.fusesource.hawtdb.internal.page.Logging.*;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import static org.fusesource.hawtdb.internal.page.Tracer.*;
+
 
 /**
  *
@@ -38,9 +41,11 @@ import static org.fusesource.hawtdb.internal.page.Logging.*;
  */
 public class HawtTxPageFileTest {
 
+    private final static Log LOG = LogFactory.getLog(HawtTxPageFileTest.class);
+
     @Test
     public void testTrivial() throws Exception {
-        traceStart("HawtTxPageFileTest.testTrivial()");
+        traceStart(LOG, "HawtTxPageFileTest.testTrivial()");
 
         File file = new File("target/test-data/" + getClass().getName() + ".db");
         file.delete();
@@ -54,12 +59,12 @@ public class HawtTxPageFileTest {
         pff.close();
 
         pff.open();
-        traceEnd("HawtTxPageFileTest.testTrivial");
+        traceEnd(LOG, "HawtTxPageFileTest.testTrivial");
     }
 
     @Test
     public void testCorruptedHeader() throws Exception {
-        traceStart("HawtTxPageFileTest.testCorruptedHeader()");
+        traceStart(LOG, "HawtTxPageFileTest.testCorruptedHeader()");
         File file = new File("target/test-data/" + getClass().getName() + "-corrupt.db");
         file.delete();
         TxPageFileFactory pff = new TxPageFileFactory();
@@ -79,7 +84,7 @@ public class HawtTxPageFileTest {
         raf.close();
 
         pff.open();
-        traceEnd("HawtTxPageFileTest.testCorruptedHeader");
+        traceEnd(LOG, "HawtTxPageFileTest.testCorruptedHeader");
     }
 
 

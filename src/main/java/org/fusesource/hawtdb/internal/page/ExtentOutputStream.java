@@ -49,6 +49,7 @@ public class ExtentOutputStream extends OutputStream {
         this(paged, DEFAULT_EXTENT_SIZE);
     }
 
+    /*
     public ExtentOutputStream(Paged paged, short extentSize) {
         init(paged, paged.allocator().alloc(extentSize), extentSize, extentSize);
     }
@@ -56,9 +57,13 @@ public class ExtentOutputStream extends OutputStream {
     public ExtentOutputStream(Paged paged, short extentSize, short nextExtentSize) {
         init(paged, paged.allocator().alloc(extentSize), extentSize, nextExtentSize);
     }
+    */
 
     public ExtentOutputStream(Paged paged, int size) {
-        short extentSize = (short)paged.pages(size + Extent.DEFAULT_MAGIC.length + 8);
+        short extentSize = DEFAULT_EXTENT_SIZE;
+        if (size > -1) {
+          extentSize = (short)paged.pages(size + Extent.DEFAULT_MAGIC.length + 8);
+        }
 
         init(paged, paged.allocator().alloc(extentSize), extentSize, extentSize);
     }
@@ -68,17 +73,21 @@ public class ExtentOutputStream extends OutputStream {
         int extentHeader = Extent.DEFAULT_MAGIC.length + 8;
         // take away amount that can be stored in the first extent
         size -= paged.getPageSize() * extentSize - extentHeader;
-        // with what's left, see how long an extent is necessary to hold it all
-        short nextExtentSize = (short)paged.pages(size + extentHeader);
+        short nextExtentSize = DEFAULT_EXTENT_SIZE;
+        // if it can't all fit in the provided extent...
+        if (size > 0) {
+          // with what's left, see how long an extent is necessary to hold it all
+          nextExtentSize = (short)paged.pages(size + extentHeader);
+        }
         trace(LOG, "nextExtentSize = %d", nextExtentSize);
 
         init(paged, page, extentSize, nextExtentSize);
         traceEnd(LOG, "ExtentOutputStream");
     }
 
-    public ExtentOutputStream(Paged paged, int page, short extentSize, short nextExtentSize) {
-        init(paged, page, extentSize, nextExtentSize);
-    }
+    //public ExtentOutputStream(Paged paged, int page, short extentSize, short nextExtentSize) {
+        //init(paged, page, extentSize, nextExtentSize);
+    //}
 
     private void init(Paged paged, int page, short extentSize, short nextExtentSize) {
         traceStart(LOG, "ExtentOutputStream.init(paged: %s, page: %d, extentSize: %d, nextExtentSize: %d)",

@@ -44,4 +44,14 @@ public class CodecPagedAccessor<T> extends AbstractStreamPagedAccessor<T> {
     protected T decode(Paged paged, DataInputStream is) throws IOException {
         return codec.decode(is);
     }
+
+    @Override
+    protected int estimateSize(T data) {
+      if (codec.isEstimatedSizeSupported()) {
+        return codec.estimatedSize(data);
+      }
+
+      return codec.getFixedSize();
+    }
+
 }

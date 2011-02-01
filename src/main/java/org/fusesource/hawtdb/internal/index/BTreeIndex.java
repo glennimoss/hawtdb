@@ -197,8 +197,8 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
             size += 9; // The extent header.
             trace(LOG, "node size %d bytes", size);
 
-            if( !node.allowPageOverflow() && size>paged.getPageSize()) {
-                trace(LOG, "no overflow allowed and this is too big for the page [%d]", paged.getPageSize());
+            if (!node.allowPageOverflow() && size>paged.getPageSize()) {
+                trace(LOG, "no overflow allowed and this [%d] is too big for the page [%d]", size, paged.getPageSize());
                 traceEnd(LOG, "BTreeIndex.storeNode -> false");
                 return false;
             }
@@ -208,7 +208,7 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
         } else {
             trace(LOG, "not deferred encoding");
 
-            if( node.storedInExtent ) {
+            if (node.storedInExtent) {
                 // TODO: not getting the results therefore expecting free?
                 List<Integer> freed = DATA_ENCODER_DECODER.pagesLinked(paged, node.page);
                 trace(LOG, "Stored in extent, freeing pages linked to %d: %s", node.page, freed);

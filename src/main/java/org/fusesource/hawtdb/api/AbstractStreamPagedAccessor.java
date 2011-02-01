@@ -37,9 +37,10 @@ abstract public class AbstractStreamPagedAccessor<T>  implements PagedAccessor<T
     public List<Integer> store(Paged paged, int page, T data) {
         // The node will be stored in an extent. This allows us to easily
         // support huge nodes.
-        // The first extent is only 1 page long, extents linked off
-        // the next extent will be up to 128 pages long.
-        ExtentOutputStream eos = new ExtentOutputStream(paged, page, (short) 1, (short) 128);
+        // The first extent is only 1 page long, extents linked off.
+        // The linked extents will be long enough to hold the data, if its
+        // size can be estimated, otherwise 128 pages.
+        ExtentOutputStream eos = new ExtentOutputStream(paged, page, (short) 1, estimateSize(data));
         DataOutputStream os = new DataOutputStream(eos);
         try {
             encode(paged, os, data);
@@ -80,4 +81,7 @@ abstract public class AbstractStreamPagedAccessor<T>  implements PagedAccessor<T
 
     abstract protected void encode(Paged paged, DataOutputStream os, T data) throws IOException;
     abstract protected T decode(Paged paged, DataInputStream is) throws IOException;
+    protected int estimateSize(T data) {
+      return -1;
+    }
 }

@@ -235,6 +235,11 @@ public final class BTreeNode<Key, Value> {
             return read(is, index);
         }
 
+        @Override
+        protected int estimateSize(Data<Key, Value> data) {
+            return estimatedSize(index, data);
+        }
+
     }
 
     BTreeNode<Key, Value> parent;
@@ -438,7 +443,7 @@ public final class BTreeNode<Key, Value> {
 //            if (splitNeeded()) {
 //                split(index);
 //            } else {
-                if( !index.storeNode(this) ) {
+                if (!index.storeNode(this)) {
                     split(index);
                 }
 //            }
