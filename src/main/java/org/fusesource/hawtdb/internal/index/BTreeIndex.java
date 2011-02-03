@@ -46,7 +46,8 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
 
     private final static Log LOG = LogFactory.getLog(BTreeIndex.class);
 
-    private final BTreeNode.DataPagedAccessor<Key, Value> DATA_ENCODER_DECODER = new BTreeNode.DataPagedAccessor<Key, Value>(this);
+    private final BTreeNode.DataPagedAccessor<Key, Value> DATA_ENCODER_DECODER =
+        new BTreeNode.DataPagedAccessor<Key, Value>(this);
 
     private final Paged paged;
     private final int page;
@@ -271,6 +272,7 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
             } else {
                 trace(LOG, "plain page");
                 // It was just in a plain page..
+                // TODO: can/should this ever happen?
                 DataByteArrayInputStream is = new DataByteArrayInputStream(buffer);
                 try {
                     node.data = BTreeNode.read(is, this);

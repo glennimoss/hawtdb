@@ -130,14 +130,14 @@ public class HashIndex<Key,Value> implements Index<Key,Value> {
 
     public Value putIfAbsent(Key key, Value value) {
 
-        Index<Key, Value> bucket = buckets.bucket(key);
+        Index<Key, Value> indexBucket = buckets.bucket(key);
 
         if( fixedCapacity ) {
-            return bucket.putIfAbsent(key,value);
+            return indexBucket.putIfAbsent(key,value);
         }
 
-        boolean wasEmpty = bucket.isEmpty();
-        Value put = bucket.putIfAbsent(key,value);
+        boolean wasEmpty = indexBucket.isEmpty();
+        Value put = indexBucket.putIfAbsent(key,value);
 
         if (wasEmpty) {
             buckets.active++;
@@ -155,15 +155,15 @@ public class HashIndex<Key,Value> implements Index<Key,Value> {
 
     public Value remove(Key key) {
         traceStart(LOG, "HashIndex.remove(%s)", key);
-        Index<Key, Value> bucket = buckets.bucket(key);
+        Index<Key, Value> indexBucket = buckets.bucket(key);
 
         if( fixedCapacity ) {
-            return bucket.remove(key);
+            return indexBucket.remove(key);
         }
 
-        boolean wasEmpty = bucket.isEmpty();
-        Value rc = bucket.remove(key);
-        boolean isEmpty = bucket.isEmpty();
+        boolean wasEmpty = indexBucket.isEmpty();
+        Value rc = indexBucket.remove(key);
+        boolean isEmpty = indexBucket.isEmpty();
 
         if (!wasEmpty && isEmpty) {
             buckets.active--;

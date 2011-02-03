@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Abstract base class for implementations of EncoderDecoder which use stream encoding/decoding.
+ * Abstract base class for implementations of PagedAccessor which use Extents.
  *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */

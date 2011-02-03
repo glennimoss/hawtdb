@@ -326,7 +326,9 @@ public final class BTreeNode<Key, Value> {
     }
 
     public Value remove(BTreeIndex<Key, Value> index, Key key) {
+        traceStart(LOG, "BTreeNode.remove(%s, %s)", index, key);
 
+        Value oldValue = null;
         if (data.isBranch()) {
             int idx = Arrays.binarySearch(data.keys, key, index.getComparator());
             idx = idx < 0 ? -(idx + 1) : idx + 1;
@@ -334,7 +336,7 @@ public final class BTreeNode<Key, Value> {
             if (child.getPage() == index.getIndexLocation()) {
                 throw new IndexException("BTree corrupted: Cylce detected.");
             }
-            Value rc = child.remove(index, key);
+            oldValue = child.remove(index, key);
 
             // child node is now empty.. remove it from the branch node.
             if (child.data.keys.length == 0) {
@@ -390,14 +392,12 @@ public final class BTreeNode<Key, Value> {
                 }
                 index.storeNode(this);
             }
-
-            return rc;
         } else {
             int idx = Arrays.binarySearch(data.keys, key, index.getComparator());
             if (idx < 0) {
                 return null;
             } else {
-                Value oldValue = data.values[idx];
+                oldValue = data.values[idx];
                 data = data.leaf(arrayDelete(data.keys, idx), arrayDelete(data.values, idx));
 
                 if (data.keys.length == 0 && parent != null) {
@@ -405,10 +405,10 @@ public final class BTreeNode<Key, Value> {
                 } else {
                     index.storeNode(this);
                 }
-
-                return oldValue;
             }
         }
+        traceEnd(LOG, "BTreeNode.remove -> %s", oldValue);
+        return oldValue;
     }
 
     private void setNext(BTreeIndex<Key, Value> index, int next) {

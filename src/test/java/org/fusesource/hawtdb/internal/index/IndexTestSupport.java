@@ -140,7 +140,7 @@ public abstract class IndexTestSupport {
             prev = i;
             try {
                 Long val = index.remove(key(i));
-                assertEquals((long) i, val);
+                assertEquals(Long.valueOf(i), val);
             } catch (Exception e) {
                 e.printStackTrace();
                 fail("unexpected exception on " + i + ", prev: " + prev + ", ex: " + e);

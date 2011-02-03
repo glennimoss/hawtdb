@@ -29,6 +29,9 @@ import static org.fusesource.hawtdb.internal.page.Tracer.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import static org.junit.Assert.*;
 import org.junit.Test;
@@ -87,22 +90,28 @@ public class HashIndexTest extends IndexTestSupport {
 
         final int count = 40;
         for (int i = 0; i < count; i++) {
-            index.put(key(i), (long)i);
+            assertNull(index.put(key(i), (long)i));
+        }
+
+        List<Integer> order = new ArrayList<Integer>(count);
+        for (int i = 0; i < count; i++) {
+          order.add(i);
         }
 
         Random rand = new Random(0);
-        int i = 0, prev = 0;
-        while (!index.isEmpty()) {
+        Collections.shuffle(order, rand);
+        int prev = 0;
+        for (int i : order) {
             prev = i;
-            i = rand.nextInt(count);
             try {
-                long val = index.remove(key(i));
-                assertEquals((long)i, val);
+                Long val = index.remove(key(i));
+                assertEquals(Long.valueOf(i), val);
             } catch (Exception e) {
                 e.printStackTrace();
                 fail("unexpected exception on " + i + ", prev: " + prev + ", ex: " + e);
             }
         }
+        assertTrue(index.isEmpty());
         pff.close();
         traceEnd(LOG, "IndexTestSupport.testNonTransactional");
     }
