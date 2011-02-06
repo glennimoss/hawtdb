@@ -35,7 +35,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 
+ *
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
  */
 public class BTreeIndexTest extends IndexTestSupport {
@@ -48,7 +48,7 @@ public class BTreeIndexTest extends IndexTestSupport {
         nf.setMinimumIntegerDigits(6);
         nf.setGroupingUsed(false);
     }
-    
+
     @Override
     protected Index<String, Long> createIndex(int page) {
         BTreeIndexFactory<String,Long> factory = new BTreeIndexFactory<String,Long>();
@@ -61,8 +61,8 @@ public class BTreeIndexTest extends IndexTestSupport {
             return factory.open(tx, page);
         }
     }
-    
-    @Test
+
+    //@Test
     public void lotsOfInsertsWithTxsThatStayOpen() throws Exception {
         createPageFileAndIndex((short) (200));
         BTreeIndex<String, Long> index = ((BTreeIndex<String, Long>)this.index);
@@ -72,41 +72,45 @@ public class BTreeIndexTest extends IndexTestSupport {
 
             index.put(key(i), (long)i);
             tx.commit();
-            
+
             assertEquals(new Long(i), index.get(key(i)));
             tx.commit();
         }
-    } 
-        
-    @Test
+    }
+
+    //@Test
     public void lotsOfInserts() throws Exception {
         createPageFileAndIndex((short) (200));
         BTreeIndex<String, Long> index = ((BTreeIndex<String, Long>)this.index);
         for (int i = 0; i < 1000*5; i++) {
             index.put(key(i), (long)i);
             tx.commit();
-            
+
             assertEquals(new Long(i), index.get(key(i)));
             tx.commit();
         }
-    }     
-    
+    }
+
     /**
-     * Yeah, the current implementation does NOT try to balance the tree.  Here is 
-     * a test case showing that it gets out of balance.  
-     * 
+     * Yeah, the current implementation does NOT try to balance the tree.  Here is
+     * a test case showing that it gets out of balance.
+     *
      * @throws Exception
      */
+    @Test
     public void treeBalancing() throws Exception {
         createPageFileAndIndex((short) 100);
 
         BTreeIndex<String, Long> index = ((BTreeIndex<String, Long>)this.index);
-        
+
         doInsert(50);
-        
+
         int minLeafDepth = index.getMinLeafDepth();
         int maxLeafDepth = index.getMaxLeafDepth();
         assertTrue("Tree is balanced", maxLeafDepth-minLeafDepth <= 1);
+
+        index.printStructure(System.out);
+
 
         // Remove some of the data
         doRemove(16);
@@ -115,14 +119,16 @@ public class BTreeIndexTest extends IndexTestSupport {
 
         System.out.println( "min:"+minLeafDepth );
         System.out.println( "max:"+maxLeafDepth );
-        index.printStructure(new PrintWriter(System.out));
+        index.printStructure(System.out);
 
         assertTrue("Tree is balanced", maxLeafDepth-minLeafDepth <= 1);
-        
+
+        System.out.println("Commiting...");
         tx.commit();
+        System.out.println("Commited");
     }
-    
-    @Test
+
+    //@Test
     public void testPruning() throws Exception {
         createPageFileAndIndex((short)100);
 
@@ -132,11 +138,11 @@ public class BTreeIndexTest extends IndexTestSupport {
         int maxLeafDepth = index.getMaxLeafDepth();
         assertEquals(1, minLeafDepth);
         assertEquals(1, maxLeafDepth);
-        
+
         doInsert(1000);
-        
+
         reloadAll();
-        
+
         index = ((BTreeIndex<String,Long>)this.index);
         minLeafDepth = index.getMinLeafDepth();
         maxLeafDepth = index.getMaxLeafDepth();
@@ -152,15 +158,15 @@ public class BTreeIndexTest extends IndexTestSupport {
         assertEquals(1, maxLeafDepth);
     }
 
-    @Test
+    //@Test
     public void testIteration() throws Exception {
         createPageFileAndIndex((short)100);
-        
+
         BTreeIndex<String,Long> index = ((BTreeIndex<String,Long>)this.index);
-          
+
         // Insert in reverse order..
         doInsertReverse(1000);
-        
+
         reloadIndex();
         tx.commit();
 
@@ -172,21 +178,21 @@ public class BTreeIndexTest extends IndexTestSupport {
             counter++;
         }
     }
-    
-    
-    @Test
+
+
+    //@Test
     public void testVisitor() throws Exception {
         createPageFileAndIndex((short)100);
         BTreeIndex<String,Long> index = ((BTreeIndex<String,Long>)this.index);
-          
+
         // Insert in reverse order..
         doInsert(1000);
-        
+
         reloadIndex();
         tx.commit();
 
         // BTree should iterate it in sorted order.
-        
+
         index.visit(new IndexVisitor<String, Long>(){
             public boolean isInterestedInKeysBetween(String first, String second, Comparator comparator) {
                 return true;
@@ -199,7 +205,7 @@ public class BTreeIndexTest extends IndexTestSupport {
         });
 
     }
-    
+
     void doInsertReverse(int count) throws Exception {
         for (int i = count-1; i >= 0; i--) {
             index.put(key(i), (long)i);
@@ -208,11 +214,11 @@ public class BTreeIndexTest extends IndexTestSupport {
     }
     /**
      * Overriding so that this generates keys that are the worst case for the BTree. Keys that
-     * always insert to the end of the BTree.  
+     * always insert to the end of the BTree.
      */
     @Override
     protected String key(int i) {
         return "key:"+nf.format(i);
     }
-       
+
 }

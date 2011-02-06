@@ -35,7 +35,7 @@ public class Tracer {
     public static void traceStart(Log log, String message, Object...args) {
       if (log.isTraceEnabled() ) {
         trace(log, message, args);
-        indent = indent + "  ";
+        indent = indent + ". ";
       }
     }
 

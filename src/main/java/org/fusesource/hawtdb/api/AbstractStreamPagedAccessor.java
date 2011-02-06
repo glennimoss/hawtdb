@@ -27,6 +27,10 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import static org.fusesource.hawtdb.internal.page.Tracer.*;
+
 /**
  * Abstract base class for implementations of PagedAccessor which use Extents.
  *
@@ -34,7 +38,10 @@ import java.util.List;
  */
 abstract public class AbstractStreamPagedAccessor<T>  implements PagedAccessor<T> {
 
+    private final static Log LOG = LogFactory.getLog(AbstractStreamPagedAccessor.class);
+
     public List<Integer> store(Paged paged, int page, T data) {
+        traceStart(LOG, "AbstractStreamPagedAccessor.store(%s, %d, %s)", paged, page, data);
         // The node will be stored in an extent. This allows us to easily
         // support huge nodes.
         // The first extent is only 1 page long, extents linked off.
@@ -52,10 +59,13 @@ abstract public class AbstractStreamPagedAccessor<T>  implements PagedAccessor<T
         Ranges pages = eos.getPages();
         pages.remove(page);
         if (pages.isEmpty()) {
+            traceEnd(LOG, "AbstractStreamPagedAccessor.store -> []");
             return Collections.emptyList();
         }
 
-        return pages.values();
+        List<Integer> ret =  pages.values();
+        traceEnd(LOG, "AbstractStreamPagedAccessor.store -> %s", ret);
+        return ret;
     }
 
     public T load(Paged paged, int page) {

@@ -104,7 +104,7 @@ public abstract class IndexTestSupport {
         traceEnd(LOG, "IndexTestSupport.reloadIndex");
     }
 
-    @Test
+    //@Test
     public void testIndexOperations() throws Exception {
         traceStart(LOG, "IndexTestSupport.testIndexOperations()");
         createPageFileAndIndex((short) 500);
@@ -123,7 +123,7 @@ public abstract class IndexTestSupport {
         traceEnd(LOG, "IndexTestSupport.testIndexOperations");
     }
 
-    @Test
+    //@Test
     public void testRandomRemove() throws Exception {
         traceStart(LOG, "IndexTestSupport.testRandomRemove()");
         createPageFileAndIndex((short)100);
@@ -155,7 +155,7 @@ public abstract class IndexTestSupport {
     void doInsert(int count) throws Exception {
         traceStart(LOG, "IndexTestSupport.doInsert(%d)", count);
         for (int i = 0; i < count; i++) {
-            index.put(key(i), (long)i);
+            assertNull(index.put(key(i), (long)i));
         }
         tx.commit();
         traceEnd(LOG, "IndexTestSupport.doInsert");
@@ -169,7 +169,8 @@ public abstract class IndexTestSupport {
         traceStart(LOG, "IndexTestSupport.checkRetrieve(%d)", count);
         for (int i = 0; i < count; i++) {
             Long item = index.get(key(i));
-            assertNotNull("Key missing: "+key(i), item);
+            //assertNotNull("Key missing: "+key(i), item);
+            assertEquals(Long.valueOf(i), item);
         }
         traceEnd(LOG, "IndexTestSupport.checkRetrieve");
     }
@@ -178,7 +179,8 @@ public abstract class IndexTestSupport {
         traceStart(LOG, "IndexTestSupport.doRemoveHalf(%d)", count);
         for (int i = 0; i < count; i++) {
             if (i % 2 == 0) {
-                assertNotNull("Expected remove to return value for index "+i, index.remove(key(i)));
+              //assertNotNull("Expected remove to return value for index "+i, index.remove(key(i)));
+              assertEquals(Long.valueOf(i), index.remove(key(i)));
             }
         }
         tx.commit();
@@ -199,20 +201,25 @@ public abstract class IndexTestSupport {
     void doRemove(int count) throws Exception {
         traceStart(LOG, "IndexTestSupport.doRemove(%d)", count);
         for (int i = 0; i < count; i++) {
-            assertNotNull("Expected remove to return value for index "+i, index.remove(key(i)));
+          //assertNotNull("Expected remove to return value for index "+i, index.remove(key(i)));
+          assertEquals(Long.valueOf(i), index.remove(key(i)));
         }
+        trace(LOG, "entries removed");
         tx.commit();
+        trace(LOG, "transaction committed");
         for (int i = 0; i < count; i++) {
             Long item = index.get(key(i));
             assertNull(item);
         }
+        trace(LOG, "verified removed entries are null");
         traceEnd(LOG, "IndexTestSupport.doRemove");
     }
 
     void doRemoveBackwards(int count) throws Exception {
         traceStart(LOG, "IndexTestSupport.doRemoveBackwards(%d)", count);
         for (int i = count - 1; i >= 0; i--) {
-            index.remove(key(i));
+            //index.remove(key(i));
+            assertEquals(Long.valueOf(i), index.remove(key(i)));
         }
         tx.commit();
         for (int i = 0; i < count; i++) {

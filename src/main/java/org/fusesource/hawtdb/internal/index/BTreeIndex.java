@@ -64,10 +64,16 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
         this.keyCodec = factory.getKeyCodec();
         this.valueCodec = factory.getValueCodec();
 
+        trace(LOG, "factory.isDeferredEncoding: %b", factory.isDeferredEncoding());
+        trace(LOG, "keyCodec.isEstimatedSizeSupported: %b", keyCodec.isEstimatedSizeSupported());
+        trace(LOG, "keyCodec.getFixedSize: %d", keyCodec.getFixedSize());
+        trace(LOG, "valueCodec.isEstimatedSizeSupported: %b", valueCodec.isEstimatedSizeSupported());
+        trace(LOG, "valueCodec.getFixedSize: %d", valueCodec.getFixedSize());
         // Deferred encoding can only done if the keys and value sizes can be computed.
         this.deferredEncoding = factory.isDeferredEncoding() &&
                 ( keyCodec.isEstimatedSizeSupported() || keyCodec.getFixedSize()>=0 ) &&
                 ( valueCodec.isEstimatedSizeSupported() || valueCodec.getFixedSize()>=0 );
+        trace(LOG, "deferredEncoding = %b", this.deferredEncoding);
 
         this.prefixer = factory.getPrefixer();
         this.comparator = factory.getComparator();
@@ -88,53 +94,86 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
     }
 
     public boolean containsKey(Key key) {
-        return root().contains(this, key);
+        traceStart(LOG, "BTreeIndex.containsKey(%s)", key);
+        boolean ret = root().contains(this, key);
+        traceEnd(LOG, "BTreeIndex.containsKey -> %b", ret);
+        return ret;
     }
 
     public Value get(Key key) {
-        return root().get(this, key);
+        traceStart(LOG, "BTreeIndex.get(%s)", key);
+        Value ret = root().get(this, key);
+        traceEnd(LOG, "BTreeIndex.get -> %s", ret);
+        return ret;
     }
 
     public Value put(Key key, Value value) {
-        return root().put(this, key, value);
+        traceStart(LOG, "BTreeIndex.put(%s, %s)", key, value);
+        Value ret = root().put(this, key, value);
+        traceEnd(LOG, "BTreeIndex.put -> %s", ret);
+        return ret;
     }
 
     public Value putIfAbsent(Key key, Value value) {
-        return root().putIfAbsent(this, key, value);
+        traceStart(LOG, "BTreeIndex.putIfAbsent(%s, %s)", key, value);
+        Value ret = root().putIfAbsent(this, key, value);
+        traceEnd(LOG, "BTreeIndex.putIfAbsent -> %s", ret);
+        return ret;
     }
 
     public Value remove(Key key) {
-        return root().remove(this, key);
+        traceStart(LOG, "BTreeIndex.remove(%s)", key);
+        Value ret = root().remove(this, key);
+        traceEnd(LOG, "BTreeIndex.remove -> %s", ret);
+        return ret;
     }
 
     public int size() {
-        return root().size(this);
+        traceStart(LOG, "BTreeIndex.size()");
+        int ret = root().size(this);
+        traceEnd(LOG, "BTreeIndex.size -> %d", ret);
+        return ret;
     }
 
     public boolean isEmpty() {
-        return root().isEmpty(this);
+        traceStart(LOG, "BTreeIndex.isEmpty()");
+        boolean ret = root().isEmpty(this);
+        traceEnd(LOG, "BTreeIndex.isEmpty -> %b", ret);
+        return ret;
     }
 
     public void clear() {
+        traceStart(LOG, "BTreeIndex.clear()");
         root().clear(this);
+        traceEnd(LOG, "BTreeIndex.clear");
     }
 
     public int getMinLeafDepth() {
-        return root().getMinLeafDepth(this, 0);
+        traceStart(LOG, "BTreeIndex.getMinLeafDepth()");
+        int ret = root().getMinLeafDepth(this, 0);
+        traceEnd(LOG, "BTreeIndex.getMinLeafDepth -> %d", ret);
+        return ret;
     }
 
     public int getMaxLeafDepth() {
-        return root().getMaxLeafDepth(this, 0);
+        traceStart(LOG, "BTreeIndex.getMaxLeafDepth()");
+        int ret = root().getMaxLeafDepth(this, 0);
+        traceEnd(LOG, "BTreeIndex.getMaxLeafDepth -> %d", ret);
+        return ret;
     }
 
     public void printStructure(PrintWriter out) {
+        traceStart(LOG, "BTreeIndex.printStructure()");
         root().printStructure(this, out, "", "");
+        traceEnd(LOG, "BTreeIndex.printStructure");
     }
 
     public void printStructure(OutputStream out) {
+        traceStart(LOG, "BTreeIndex.printStructure()");
         PrintWriter pw = new PrintWriter(out, false);
         root().printStructure(this, pw, "", "");
         pw.flush();
+        traceEnd(LOG, "BTreeIndex.printStructure");
     }
 
     public Iterator<Map.Entry<Key, Value>> iterator() {
@@ -165,8 +204,9 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
     // Internal implementation methods
     // /////////////////////////////////////////////////////////////////
     private BTreeNode<Key, Value> root() {
+        traceStart(LOG, "BTreeIndex.root()");
         BTreeNode<Key, Value> root = loadNode(null, page);
-        trace(LOG, "BTreeIndex.root() -> %s", root);
+        traceEnd(LOG, "BTreeIndex.root -> %s", root);
         return root;
     }
 
@@ -174,11 +214,17 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
     // Internal methods made accessible to BTreeNode
     // /////////////////////////////////////////////////////////////////
     BTreeNode<Key, Value> createNode(BTreeNode<Key, Value> parent, Data<Key, Value> data) {
-        return new BTreeNode<Key, Value>(parent, paged.allocator().alloc(1), data);
+        traceStart(LOG, "BTreeIndex.createNode(%s, %s)", parent, data);
+        BTreeNode<Key, Value> ret = new BTreeNode<Key, Value>(parent, paged.allocator().alloc(1), data);
+        traceEnd(LOG, "BTreeIndex.createNode -> %s", ret);
+        return ret;
     }
 
     BTreeNode<Key, Value> createNode(BTreeNode<Key, Value> parent) {
-        return new BTreeNode<Key, Value>(parent, paged.allocator().alloc(1));
+        traceStart(LOG, "BTreeIndex.createNode(%s)", parent);
+        BTreeNode<Key, Value> ret = new BTreeNode<Key, Value>(parent, paged.allocator().alloc(1));
+        traceEnd(LOG, "BTreeIndex.createNode -> %s", ret);
+        return ret;
     }
 
     @SuppressWarnings("serial")
@@ -218,6 +264,9 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
             if (node.isLeaf()) {
                 trace(LOG, "node is leaf");
                 List<Integer> pages = DATA_ENCODER_DECODER.store(paged, node.page, node.data);
+                // TODO: this pages.size() is actually the number of LINKED
+                // pages, so this will only split when the node is over 2
+                // pages in size.
                 if( !node.allowPageOverflow() && pages.size()>1 ) {
                     trace(LOG, "node should not have overflowed?");
                     // TODO: not getting the results therefore expecting free?
@@ -228,9 +277,12 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
                 }
                 node.storedInExtent=true;
             } else {
+                // TODO: Why treat this differently than the leaf in terms of
+                // using an Extent?
                 trace(LOG, "node is branch");
                 DataByteArrayOutputStream os = new DataByteArrayOutputStream(paged.getPageSize()) {
                     protected void resize(int newcount) {
+                        trace(LOG, "Refusing to resize");
                         throw new PageOverflowIOException();
                     };
                 };
@@ -273,11 +325,14 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
                 trace(LOG, "plain page");
                 // It was just in a plain page..
                 // TODO: can/should this ever happen?
+                // A: Apparently if it's not deferred, and is a leaf, no
+                // extent is used
                 DataByteArrayInputStream is = new DataByteArrayInputStream(buffer);
                 try {
                     node.data = BTreeNode.read(is, this);
                     node.storedInExtent=false;
                 } catch (IOException e) {
+                    traceEnd(LOG, "BTreeIndex.loadNode -> could not read btree node");
                     throw new IndexException("Could not read btree node");
                 }
             }
@@ -293,7 +348,7 @@ public class BTreeIndex<Key, Value> implements SortedIndex<Key, Value> {
             paged.clear(DATA_ENCODER_DECODER, node.page);
         } else {
             trace(LOG, "deferred encoding");
-            if ( node.storedInExtent ) {
+            if (node.storedInExtent) {
                 trace(LOG, "stored in extent, freeing linked pages");
                 // TODO: not getting the results therefore expecting free?
                 DATA_ENCODER_DECODER.pagesLinked(paged, node.page);

@@ -451,6 +451,7 @@ public final class HawtTxPageFile implements TxPageFile {
             header.decode(buffer);
 
             if( !Arrays.equals(MAGIC, header.magic) ) {
+                traceEnd(LOG, "HawtTxPageFile.recover -> file header not as expected");
                 throw new PagingException("The file header is not of the expected type.");
             }
 
