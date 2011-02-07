@@ -78,7 +78,7 @@ public class BTreeIndexTest extends IndexTestSupport {
         }
     }
 
-    //@Test
+    @Test
     public void lotsOfInserts() throws Exception {
         createPageFileAndIndex((short) (200));
         BTreeIndex<String, Long> index = ((BTreeIndex<String, Long>)this.index);
@@ -97,7 +97,7 @@ public class BTreeIndexTest extends IndexTestSupport {
      *
      * @throws Exception
      */
-    @Test
+    //@Test
     public void treeBalancing() throws Exception {
         createPageFileAndIndex((short) 100);
 

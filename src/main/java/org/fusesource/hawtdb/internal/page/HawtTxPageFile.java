@@ -275,6 +275,7 @@ public final class HawtTxPageFile implements TxPageFile {
     }
 
     public void close() {
+        traceStart(LOG, "HawtTxPageFile.close()");
         if( worker!=null ) {
             final CountDownLatch done = new CountDownLatch(1);
             worker.execute(new Runnable(){
@@ -290,6 +291,7 @@ public final class HawtTxPageFile implements TxPageFile {
         }
         flush();
         performBatches();
+        traceEnd(LOG, "HawtTxPageFile.close");
     }
 
     @Override
@@ -565,13 +567,16 @@ public final class HawtTxPageFile implements TxPageFile {
      * @see org.fusesource.hawtdb.internal.page.TransactionalPageFile#flush()
      */
     public void flush() {
+        traceStart(LOG, "HawtTxPageFile.flush()");
         synchronized (HOUSE_KEEPING_MUTEX) {
             storeBatches(true);
             syncBatches();
         }
+        traceEnd(LOG, "HawtTxPageFile.flush");
     }
 
     public void flush(final Runnable onComplete) {
+        traceStart(LOG, "HawtTxPageFile.flush(%s)", onComplete);
         if( worker!=null ) {
             worker.execute(new Runnable() {
                 public void run() {
@@ -583,7 +588,7 @@ public final class HawtTxPageFile implements TxPageFile {
             flush();
             onComplete.run();
         }
-
+        traceEnd(LOG, "HawtTxPageFile.flush");
     }
 
     // /////////////////////////////////////////////////////////////////
@@ -628,6 +633,7 @@ public final class HawtTxPageFile implements TxPageFile {
      * Attempts to perform a batch state change: open -> storing
      */
     private void storeBatches(boolean force) {
+        traceStart(LOG, "HawtTxPageFile.storeBatches(%b)", force);
         Batch batch;
 
         // We synchronized /w the transactions so that they see the state change.
@@ -638,6 +644,8 @@ public final class HawtTxPageFile implements TxPageFile {
                 openBatch = new Batch(batch.head);
                 batches.addLast(openBatch);
             } else {
+                trace(LOG, "Nothing to be done?");
+                traceEnd(LOG, "HawtTxPageFile.storeBatches");
                 return;
             }
         }
@@ -656,6 +664,7 @@ public final class HawtTxPageFile implements TxPageFile {
         // Update the header to know about the new batch page.
         header.optimistic_recovery_page = batch.page;
         storeHeader();
+        traceEnd(LOG, "HawtTxPageFile.storeBatches");
     }
 
     /**
@@ -759,9 +768,12 @@ public final class HawtTxPageFile implements TxPageFile {
      * the batch anymore.
      */
     public void performBatches() {
+        traceStart(LOG, "HawtTxPageFile.performBatches()");
 
         if( storedBatches==storingBatches ) {
             // There are no batches in the synced state for use to transition.
+            trace(LOG, "no batches");
+            traceEnd(LOG, "HawtTxPageFile.performBatches");
             return;
         }
 
@@ -769,6 +781,8 @@ public final class HawtTxPageFile implements TxPageFile {
         // we can't transition from synced, until that snapshot closes.
         Batch lastPerformed = storedBatches.getPrevious();
         if( lastPerformed!=null && lastPerformed.snapshots!=0) {
+            trace(LOG, "last batch still open");
+            traceEnd(LOG, "HawtTxPageFile.performBatches");
             return;
         }
 
@@ -809,9 +823,9 @@ public final class HawtTxPageFile implements TxPageFile {
                         }
 
                     }
-                    if( update.allocated() ) {
+                    if (update.allocated()) {
 
-                        if( storedBatches.recovered ) {
+                        if (storedBatches.recovered) {
                             // If we are recovering, the allocator MIGHT not have this
                             // page as being allocated.  This makes sure it's allocated so that
                             // new transaction to get this page and overwrite it in error.
@@ -820,16 +834,16 @@ public final class HawtTxPageFile implements TxPageFile {
                         // Update the persistent free list.  This gets stored on the next sync.
                         storedFreeList.remove(page, 1);
 
-                    } else if( update.freed() ) {
+                    } else if (update.freed()) {
                         storedFreeList.add(page, 1);
                     }
 
                     // update the read cache..
                     DeferredUpdate du = update.deferredUpdate();
                     if( du != null ) {
-                        if( du.removed() ) {
+                        if (du.removed()) {
                             readCache.map.remove(page);
-                        } else if( du.put() ) {
+                        } else if (du.put()) {
                             readCache.map.put(page, du.value);
                         }
                     }
@@ -851,6 +865,7 @@ public final class HawtTxPageFile implements TxPageFile {
                 break;
             }
         }
+        traceEnd(LOG, "HawtTxPageFile.performBatches");
     }
 
     // /////////////////////////////////////////////////////////////////
