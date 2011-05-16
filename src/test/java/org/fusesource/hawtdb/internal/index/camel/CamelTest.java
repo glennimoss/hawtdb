@@ -25,6 +25,7 @@ import java.text.NumberFormat;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.fusesource.hawtbuf.codec.LongCodec;
 import org.fusesource.hawtbuf.codec.StringCodec;
@@ -53,21 +54,48 @@ public class CamelTest {
         f.delete();
 
         Repository repo = new Repository("foo", f);
+        repo.setBufferSize(47);
+        repo.setPageSize(31);
 
-        for (int i=0; i < 10000; i++) {
-            String key = key(i % 3);
+        Random r = new Random();
+        int[] counts = new int[3];
+        int[] completionSize = new int[3];
+        String[] buckets = new String[3];
+
+        for (int i=0; i < 5000; i++) {
+            int bucket = i % 3;
+
+            if (0 == completionSize[bucket]) {
+                completionSize[bucket] = r.nextInt(50);
+            }
+            counts[bucket]++;
+
+            String key = "" + bucket;
             String old = repo.get(key);
-            StringBuilder sb = new StringBuilder(old != null ? old : "");
-            for (int j=0; j < 100; j++) {
-                sb.append(String.format(">%04dxx%02d<", i, j));
+
+            if (null != old) {
+                assertEquals(buckets[bucket], old);
             }
 
-            if (old != null && old.length() < 5000) {
-                trace(LOG, "Aggregated key [%s]: %s", key, sb.toString());
-                repo.add(key, sb.toString());
+            StringBuilder sb = new StringBuilder(old != null ? old : "");
+            int size = r.nextInt(100) + 1;
+            for (int j=0; j < size; j++) {
+                sb.append(String.format(">%04dx%03d<", i, j));
+            }
+
+            trace(LOG, "Aggregated msg %d key [%s]: length %d, count %d/%d",
+                    i, key, sb.length(),
+                    counts[bucket], completionSize[bucket]);
+
+            String state = sb.toString();
+            buckets[bucket] = state;
+
+            if (counts[bucket] < completionSize[bucket]) {
+                repo.add(key, state);
             } else {
-                trace(LOG, "Completed key [%s]: %s", key, sb.toString());
-                repo.remove(key, sb.toString());
+                trace(LOG, "Completed key [%s]", key);
+                counts[bucket] = completionSize[bucket] = 0;
+                repo.remove(key, state);
                 repo.confirm(key);
             }
         }
